@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #
 # PdfShuffler 0.7.0 - GTK+ based utility for splitting, rearrangement and 
 # modification of PDF documents.
-# Copyright (C) 2008-2016 Konstantinos Poulios
-# <https://gna.org/projects/pdfshuffler/>
+# Copyright (C) 2008-2018 Konstantinos Poulios
+# <https://savannah.nongnu.org/projects/pdfshuffler/>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ setup(name='pdfshuffler',
       author='Konstantinos Poulios',
       author_email='logari81 at gmail dot com',
       description='A simple application for PDF Merging, Rearranging, and Splitting',
-      url = 'https://gna.org/projects/pdfshuffler/',
+      url = 'https://savannah.nongnu.org/projects/pdfshuffler/',
       license='GNU GPL-3',
       scripts=['bin/pdfshuffler'],
       packages=['pdfshuffler'],

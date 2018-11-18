@@ -1,12 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 
  PdfShuffler 0.7.0 - GTK+ based utility for splitting, rearrangement and
  modification of PDF documents.
- Copyright (C) 2008-2016 Konstantinos Poulios
- <https://sourceforge.net/projects/pdfshuffler>
+ Copyright (C) 2008-2018 Konstantinos Poulios
+ <https://savannah.nongnu.org/projects/pdfshuffler/>
 
  This file is part of PdfShuffler.
 
@@ -27,9 +27,9 @@
 """
 
 import os
-import shutil       # for file operations like whole directory deletion
-import sys          # for proccessing of command line args
-import urllib       # for parsing filename information passed by DnD
+import shutil         # for file operations like whole directory deletion
+import sys            # for proccessing of command line args
+import urllib.request # for parsing filename information passed by DnD
 import threading
 import tempfile
 from copy import copy
@@ -53,7 +53,7 @@ _ = gettext.gettext
 
 APPNAME = 'PdfShuffler' # PDF-Shuffler, PDFShuffler, pdfshuffler
 VERSION = '0.7.0'
-WEBSITE = 'https://gna.org/projects/pdfshuffler/'
+WEBSITE = 'https://savannah.nongnu.org/projects/pdfshuffler/'
 LICENSE = 'GNU General Public License (GPL) Version 3.'
 
 try:
@@ -77,12 +77,9 @@ gi.require_version('Poppler', '0.18')
 from gi.repository import Poppler      #for the rendering of pdf pages
 import cairo
 
-try:
-    from pyPdf import PdfFileWriter, PdfFileReader
-except ImportError:
-    from PyPDF2 import PdfFileWriter, PdfFileReader
+from PyPDF2 import PdfFileWriter, PdfFileReader
 
-from pdfshuffler_iconview import CellRendererImage
+from pdfshuffler.pdfshuffler_iconview import CellRendererImage
 GObject.type_register(CellRendererImage)
 
 import time
@@ -148,7 +145,7 @@ class PdfShuffler:
                               self.TARGETS_SW,
                               Gdk.DragAction.COPY |
                               Gdk.DragAction.MOVE)
-        self.sw.connect('drag_data_received', self.sw_dnd_received_data)
+        self.sw.connect('drag_data_received', self.sw_dnd_data_received)
         self.sw.connect('button_press_event', self.sw_button_press_event)
         self.sw.connect('scroll_event', self.sw_scroll_event)
 
@@ -210,12 +207,12 @@ class PdfShuffler:
         self.iconview.enable_model_drag_dest(self.TARGETS_IV,
                                              Gdk.DragAction.DEFAULT)
         self.iconview.connect('drag_begin', self.iv_drag_begin)
-        self.iconview.connect('drag_data_get', self.iv_dnd_get_data)
-        self.iconview.connect('drag_data_received', self.iv_dnd_received_data)
+        self.iconview.connect('drag_data_get', self.iv_dnd_data_get)
+        self.iconview.connect('drag_data_received', self.iv_dnd_data_received)
         self.iconview.connect('drag_data_delete', self.iv_dnd_data_delete)
         self.iconview.connect('drag_motion', self.iv_dnd_motion)
-        self.iconview.connect('drag_leave', self.iv_dnd_leave_end)
-        self.iconview.connect('drag_end', self.iv_dnd_leave_end)
+        self.iconview.connect('drag_leave', self.iv_dnd_leave)
+        self.iconview.connect('drag_end', self.iv_dnd_leave)
         self.iconview.connect('button_press_event', self.iv_button_press_event)
 
         align.add(self.iconview)
@@ -658,9 +655,9 @@ class PdfShuffler:
 
         if len(iconview.get_selected_items()) > 1:
             iconview.stop_emission('drag_begin')
-            context.set_icon_stock(Gtk.STOCK_DND_MULTIPLE, 0, 0)
+            Gtk.drag_set_icon_name(context, "gtk-dnd-multiple", 0, 0)
 
-    def iv_dnd_get_data(self, iconview, context,
+    def iv_dnd_data_get(self, iconview, context,
                         selection_data, target_id, etime):
         """Handles requests for data by drag and drop in iconview"""
 
@@ -685,7 +682,7 @@ class PdfShuffler:
             data = '\n;\n'.join(data)
             selection_data.set(selection_data.get_target(), 8, data.encode())
 
-    def iv_dnd_received_data(self, iconview, context, x, y,
+    def iv_dnd_data_received(self, iconview, context, x, y,
                              selection_data, target_id, etime):
         """Handles received data by drag and drop in iconview"""
 
@@ -752,7 +749,7 @@ class PdfShuffler:
                                     model.move_before(iter_from, iter_to)
                                 else:
                                     model.move_after(iter_from, iter_to)
-                                if context.get_actions() & Gdk.DragAction.MOVE:
+                                if not (context.get_actions() & Gdk.DragAction.COPY):
                                     context.finish(True, True, etime)
 
     def iv_dnd_data_delete(self, widget, context):
@@ -786,7 +783,7 @@ class PdfShuffler:
             GObject.source_remove(self.iv_auto_scroll_timer)
             self.iv_auto_scroll_timer = None
 
-    def iv_dnd_leave_end(self, widget, context, ignored=None):
+    def iv_dnd_leave(self, widget, context, ignored=None):
         """Ends the auto-scroll during DND"""
 
         if self.iv_auto_scroll_timer:
@@ -823,13 +820,12 @@ class PdfShuffler:
                 self.popup.popup(None, None, None, None, event.button, time)
             return 1
 
-    def sw_dnd_received_data(self, scrolledwindow, context, x, y,
+    def sw_dnd_data_received(self, scrolledwindow, context, x, y,
                              selection_data, target_id, etime):
         """Handles received data by drag and drop in scrolledwindow"""
 
-        data = selection_data.get_data()
         if target_id == self.MODEL_ROW_EXTERN:
-            self.model
+            data = selection_data.get_data().decode()
             if data:
                 data = data.split('\n;\n')
             while data:
@@ -838,12 +834,11 @@ class PdfShuffler:
                 npage, angle = [int(k) for k in tmp[1:3]]
                 crop = [float(side) for side in tmp[3:7]]
                 if self.add_pdf_pages(filename, npage, npage, angle, crop):
-                    if context.get_actions() & Gdk.DragAction.MOVE:
+                    if not (context.get_actions() & Gdk.DragAction.COPY):
                         context.finish(True, True, etime)
         elif target_id == self.TEXT_URI_LIST:
-            uri = data.strip()
-            uri_splitted = uri.split() # we may have more than one file dropped
-            for uri in uri_splitted:
+            data = selection_data.get_uris()
+            for uri in data:
                 filename = self.get_file_path_from_dnd_dropped_uri(uri)
                 try:
                     if os.path.isfile(filename): # is it a file?
@@ -892,8 +887,8 @@ class PdfShuffler:
     def get_file_path_from_dnd_dropped_uri(self, uri):
         """Extracts the path from an uri"""
 
-        path = urllib.url2pathname(uri) # escape special chars
-        path = path.strip('\r\n\x00')   # remove \r\n and NULL
+        path = urllib.request.url2pathname(uri) # escape special chars
+        path = path.strip('\r\n\x00')           # remove \r\n and NULL
 
         # get the path to file
         if path.startswith('file:\\\\\\'): # windows
