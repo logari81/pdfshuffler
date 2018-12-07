@@ -28,12 +28,15 @@
 
 import os
 import shutil         # for file operations like whole directory deletion
-import sys            # for proccessing of command line args
-import urllib.request # for parsing filename information passed by DnD
+import sys            # for processing of command line args
 import threading
 import tempfile
+import time
 import signal
 from copy import copy
+
+# for parsing filename information passed by DnD
+from urllib.request import url2pathname
 
 sharedir = '/usr/share'
 if sys.argv[0]:
@@ -44,11 +47,11 @@ if sys.argv[0]:
         sharedir = basedir
 localedir = os.path.join(sharedir, 'locale')
 
-import locale       #for multilanguage support
+import locale       # for multilanguage support
 import gettext
 locale.setlocale(locale.LC_ALL, '')
 locale.bindtextdomain('pdfshuffler', localedir)
-gettext.bindtextdomain('pdfshuffler',  localedir)
+gettext.bindtextdomain('pdfshuffler', localedir)
 gettext.textdomain('pdfshuffler')
 _ = gettext.gettext
 
@@ -72,7 +75,7 @@ except:
 
 from gi.repository import Gdk
 from gi.repository import GObject      # for using custom signals
-from gi.repository import Pango        # for adjusting the text alignment in CellRendererText
+#from gi.repository import Pango        # for adjusting the text alignment in CellRendererText
 from gi.repository import Gio          # for inquiring mime types information
 from gi.repository import GLib
 gi.require_version('Poppler', '0.18')
@@ -84,7 +87,6 @@ from PyPDF2 import PdfFileWriter, PdfFileReader
 from pdfshuffler.pdfshuffler_iconview import CellRendererImage
 GObject.type_register(CellRendererImage)
 
-import time
 
 class PdfShuffler:
     prefs = {
