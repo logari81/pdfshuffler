@@ -221,6 +221,8 @@ class PdfShuffler:
         self.iconview.connect('drag_leave', self.iv_dnd_leave)
         self.iconview.connect('drag_end', self.iv_dnd_leave)
         self.iconview.connect('button_press_event', self.iv_button_press_event)
+        self.iconview.connect('motion_notify_event', self.iv_motion)
+        self.iconview.connect('button_release_event', self.iv_button_release_event)
 
         align.add(self.iconview)
 
@@ -268,6 +270,7 @@ class PdfShuffler:
         self.iv_auto_scroll_direction = 0
         self.iv_auto_scroll_timer = None
         self.pdfqueue = []
+        self.pressed_button = None
 
         GObject.type_register(PDFRenderer)
         GObject.signal_new('update_thumbnail', PDFRenderer,
@@ -820,8 +823,35 @@ class PdfShuffler:
             sw_vadj.set_value(min(sw_vpos, sw_vadj.get_upper() - sw_vadj.get_page_size()))
         return True  #call me again
 
+    def iv_motion(self, iconview, event):
+        """Manages mouse movement on the iconview to detect drag and drop events"""
+
+        if self.pressed_button:
+            if iconview.drag_check_threshold(self.pressed_button.x,
+                                             self.pressed_button.y,
+                                             event.x, event.y):
+                iconview.drag_begin_with_coordinates(Gtk.TargetList.new(self.TARGETS_IV),
+                                                     Gdk.DragAction.COPY | Gdk.DragAction.MOVE,
+                                                     self.pressed_button.button, event, -1, -1)
+                self.pressed_button = None
+
+    def iv_button_release_event(self, iconview, event):
+        """Manages mouse releases on the iconview"""
+
+        if self.pressed_button:
+            # Button was pressed and released on a previously selected item
+            # without causing a drag and drop: Deselect everything except
+            # the clicked item.
+            iconview.unselect_all()
+            path = iconview.get_path_at_pos(event.x, event.y)
+            iconview.select_path(path)
+            iconview.set_cursor(path, None, False)  # for consistent shift+click selection
+        self.pressed_button = None
+
     def iv_button_press_event(self, iconview, event):
         """Manages mouse clicks on the iconview"""
+
+        click_path = iconview.get_path_at_pos(int(event.x), int(event.y))
 
         # On shift-click, select (or, with the Control key, toggle) items
         # from the item after the cursor up to the shift-clicked item,
@@ -831,10 +861,7 @@ class PdfShuffler:
         # (rectangular) selection, which is not what we want. We override
         # it by handling the shift-click here.
         if event.button == 1 and event.state & Gdk.ModifierType.SHIFT_MASK:
-            x = int(event.x)
-            y = int(event.y)
             cursor_path = iconview.get_cursor()[1]
-            click_path = iconview.get_path_at_pos(x, y)
             if cursor_path and click_path:
                 i_cursor = cursor_path[0]
                 i_click = click_path[0]
@@ -848,17 +875,23 @@ class PdfShuffler:
                         iconview.select_path(path)
             return 1
 
-        elif event.button == 3:
-            path = iconview.get_path_at_pos(int(event.x),
-                                            int(event.y))
+        # Do not deselect when clicking an already selected item for drag and drop
+        elif event.button == 1:
             selection = iconview.get_selected_items()
-            if path:
-                if path not in selection:
+            if click_path and click_path in selection:
+                self.pressed_button = event
+                return 1  # prevent propagation i.e. (de-)selection
+
+        # Display right click menu
+        elif event.button == 3:
+            time = event.time
+            selection = iconview.get_selected_items()
+            if click_path:
+                if click_path not in selection:
                     iconview.unselect_all()
-                iconview.select_path(path)
+                iconview.select_path(click_path)
                 iconview.grab_focus()
-                self.popup.popup(None, None, None, None,
-                                 event.button, event.time)
+                self.popup.popup(None, None, None, None, event.button, time)
             return 1
 
     def sw_dnd_data_received(self, scrolledwindow, context, x, y,
@@ -934,8 +967,8 @@ class PdfShuffler:
 
     def get_file_path_from_dnd_dropped_uri(self, uri):
         """Extracts the path from an uri"""
-        path = urllib.request.url2pathname(uri) # escape special chars
-        path = path.strip('\r\n\x00')           # remove \r\n and NULL
+        path = url2pathname(uri) # escape special chars
+        path = path.strip('\r\n\x00')   # remove \r\n and NULL
 
         # get the path to file
         if path.startswith('file:\\\\\\'): # windows
