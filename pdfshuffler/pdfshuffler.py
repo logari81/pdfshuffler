@@ -260,7 +260,7 @@ class PdfShuffler:
            self.popup.append(popup_item)
 
         # Initializing variables
-        self.export_directory = os.getenv('HOME')
+        self.export_directory = os.path.expanduser('~')
         self.import_directory = self.export_directory
         self.nfile = 0
         self.iv_auto_scroll_direction = 0
