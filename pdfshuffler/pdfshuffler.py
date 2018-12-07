@@ -32,6 +32,7 @@ import sys            # for proccessing of command line args
 import urllib.request # for parsing filename information passed by DnD
 import threading
 import tempfile
+import signal
 from copy import copy
 
 sharedir = '/usr/share'
@@ -73,6 +74,7 @@ from gi.repository import Gdk
 from gi.repository import GObject      # for using custom signals
 from gi.repository import Pango        # for adjusting the text alignment in CellRendererText
 from gi.repository import Gio          # for inquiring mime types information
+from gi.repository import GLib
 gi.require_version('Poppler', '0.18')
 from gi.repository import Poppler      #for the rendering of pdf pages
 import cairo
@@ -135,6 +137,9 @@ class PdfShuffler:
         self.window.set_default_size(self.prefs['window width'],
                                      self.prefs['window height'])
         self.window.connect('delete_event', self.close_application)
+
+        if hasattr(GLib, "unix_signal_add"):
+            GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, self.close_application)
 
         # Create a scrolled window to hold the thumbnails-container
         self.sw = self.uiXML.get_object('scrolledwindow')
@@ -398,7 +403,7 @@ class PdfShuffler:
         if event.keyval == 65535:   # Delete keystroke
             self.clear_selected()
 
-    def close_application(self, widget, event=None, data=None):
+    def close_application(self, widget=None, event=None, data=None):
         """Termination"""
 
         if self.rendering_thread:
