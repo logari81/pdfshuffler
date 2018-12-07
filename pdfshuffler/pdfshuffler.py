@@ -64,8 +64,8 @@ try:
 except:
     print('You do not have the required version of GTK+ installed.\n\n' +
           'Installed GTK+ version is ' +
-          '.'.join([str(Gtk.get_major_version()), \
-                    str(Gtk.get_minor_version()), \
+          '.'.join([str(Gtk.get_major_version()),
+                    str(Gtk.get_minor_version()),
                     str(Gtk.get_micro_version())]) + '\n' +
           'Required GTK+ version is 3.0 or higher')
     sys.exit(1)
@@ -267,8 +267,8 @@ class PdfShuffler:
         self.iv_auto_scroll_timer = None
         self.pdfqueue = []
 
-        GObject.type_register(PDF_Renderer)
-        GObject.signal_new('update_thumbnail', PDF_Renderer,
+        GObject.type_register(PDFRenderer)
+        GObject.signal_new('update_thumbnail', PDFRenderer,
                            GObject.SignalFlags.RUN_FIRST, None,
                            [GObject.TYPE_INT, GObject.TYPE_PYOBJECT,
                             GObject.TYPE_FLOAT])
@@ -281,7 +281,6 @@ class PdfShuffler:
             self.add_pdf_pages(filename)
 
     def set_cellrenderer_data(self, column, cell, model, iter, data=None):
-
         cell.set_property('image', model.get_value(iter,1))
         cell.set_property('scale', model.get_value(iter,4))
         cell.set_property('rotation', model.get_value(iter,6))
@@ -299,7 +298,7 @@ class PdfShuffler:
             self.rendering_thread.join()
         #FIXME: the resample=1. factor has to be dynamic when lazy rendering
         #       is implemented
-        self.rendering_thread = PDF_Renderer(self.model, self.pdfqueue, 1)
+        self.rendering_thread = PDFRenderer(self.model, self.pdfqueue, 1)
         self.rendering_thread.connect('update_thumbnail', self.update_thumbnail)
         self.rendering_thread.start()
 
@@ -332,7 +331,7 @@ class PdfShuffler:
             cnt_all += 1
             if row[1]:
                 cnt_finished += 1
-        fraction = float(cnt_finished)/float(cnt_all)
+        fraction = float(cnt_finished) / float(cnt_all)
 
         self.progress_bar.set_fraction(fraction)
         self.progress_bar.set_text(_('Rendering thumbnails... [%(i1)s/%(i2)s]')
@@ -368,8 +367,7 @@ class PdfShuffler:
             return
 
         nfile, npage, rotation = self.model.get(iter, 2, 3, 6)
-        crop = self.model.get(iter, 7, 8, 9, 10)
-        page = self.pdfqueue[nfile-1].document.get_page(npage-1)
+        page = self.pdfqueue[nfile - 1].document.get_page(npage - 1)
         w0, h0 = page.get_size()
 
         rotation = int(rotation) % 360
@@ -434,7 +432,7 @@ class PdfShuffler:
                 break
 
         if not pdfdoc:
-            pdfdoc = PDF_Doc(filename, self.nfile, self.tmp_dir)
+            pdfdoc = PDFDoc(filename, self.nfile, self.tmp_dir)
             self.import_directory = os.path.split(filename)[0]
             self.export_directory = self.import_directory
             if pdfdoc.nfile != 0 and pdfdoc != []:
@@ -452,7 +450,7 @@ class PdfShuffler:
 
         for npage in range(n_start, n_end + 1):
             descriptor = ''.join([pdfdoc.shortname, '\n', _('page'), ' ', str(npage)])
-            page = pdfdoc.document.get_page(npage-1)
+            page = pdfdoc.document.get_page(npage - 1)
             w, h = page.get_size()
             iter = self.model.append((descriptor,         # 0
                                       None,               # 1
@@ -530,7 +528,7 @@ class PdfShuffler:
                     stat = pdfdoc_inp.decrypt('')
                 except:
                     stat = 0
-                if (stat!=1):
+                if stat != 1:
                     errmsg = _('File %s is encrypted.\n'
                                'Support for encrypted files has not been implemented yet.\n'
                                'File export failed.') % pdfdoc.filename
@@ -548,20 +546,20 @@ class PdfShuffler:
             # add pages from input to output document
             nfile = row[2]
             npage = row[3]
-            current_page = copy(pdf_input[nfile-1].getPage(npage-1))
+            current_page = copy(pdf_input[nfile - 1].getPage(npage - 1))
             angle = row[6]
-            angle0 = current_page.get("/Rotate",0)
-            crop = [row[7],row[8],row[9],row[10]]
+            angle0 = current_page.get("/Rotate", 0)
+            crop = [row[7], row[8], row[9], row[10]]
             if angle != 0:
                 current_page.rotateClockwise(angle)
-            if crop != [0.,0.,0.,0.]:
+            if crop != [0., 0., 0., 0.]:
                 rotate_times = int(round(((angle + angle0) % 360) / 90) % 4)
                 crop_init = crop
                 if rotate_times != 0:
-                    perm = [0,2,1,3]
+                    perm = [0, 2, 1, 3]
                     for it in range(rotate_times):
                         perm.append(perm.pop(0))
-                    perm.insert(1,perm.pop(2))
+                    perm.insert(1, perm.pop(2))
                     crop = [crop_init[perm[side]] for side in range(4)]
                 #(x1, y1) = current_page.cropBox.lowerLeft
                 #(x2, y2) = current_page.cropBox.upperRight
@@ -698,13 +696,13 @@ class PdfShuffler:
             item = iconview.get_dest_item_at_pos(x, y)
             if item:
                 path, position = item
-                ref_to = Gtk.TreeRowReference.new(model,path)
+                ref_to = Gtk.TreeRowReference.new(model, path)
             else:
                 ref_to = None
                 position = Gtk.IconViewDropPosition.DROP_RIGHT
                 if len(model) > 0:  #find the iterator of the last row
                     row = model[-1]
-                    ref_to = Gtk.TreeRowReference.new(model,row.path)
+                    ref_to = Gtk.TreeRowReference.new(model, row.path)
             if ref_to:
                 before = (position == Gtk.IconViewDropPosition.DROP_LEFT
                           or position == Gtk.IconViewDropPosition.DROP_ABOVE)
@@ -762,7 +760,7 @@ class PdfShuffler:
 
         model = self.iconview.get_model()
         selection = self.iconview.get_selected_items()
-        ref_del_list = [Gtk.TreeRowReference.new(model,path) for path in selection]
+        ref_del_list = [Gtk.TreeRowReference.new(model, path) for path in selection]
         for ref_del in ref_del_list:
             path = ref_del.get_path()
             iter = model.get_iter(path)
@@ -774,12 +772,12 @@ class PdfShuffler:
         autoscroll_area = 40
         sw_vadj = self.sw.get_vadjustment()
         sw_height = self.sw.get_allocation().height
-        if y -sw_vadj.get_value() < autoscroll_area:
+        if y - sw_vadj.get_value() < autoscroll_area:
             if not self.iv_auto_scroll_timer:
                 self.iv_auto_scroll_direction = Gtk.DirectionType.UP
                 self.iv_auto_scroll_timer = GObject.timeout_add(150,
                                                                 self.iv_auto_scroll)
-        elif y -sw_vadj.get_value() > sw_height - autoscroll_area:
+        elif y - sw_vadj.get_value() > sw_height - autoscroll_area:
             if not self.iv_auto_scroll_timer:
                 self.iv_auto_scroll_direction = Gtk.DirectionType.DOWN
                 self.iv_auto_scroll_timer = GObject.timeout_add(150,
@@ -841,8 +839,7 @@ class PdfShuffler:
                     if not (context.get_actions() & Gdk.DragAction.COPY):
                         context.finish(True, True, etime)
         elif target_id == self.TEXT_URI_LIST:
-            data = selection_data.get_uris()
-            for uri in data:
+            for uri in selection_data.get_uris():
                 filename = self.get_file_path_from_dnd_dropped_uri(uri)
                 try:
                     if os.path.isfile(filename): # is it a file?
@@ -859,7 +856,6 @@ class PdfShuffler:
 
     def sw_scroll_event(self, scrolledwindow, event):
         """Manages mouse scroll events in scrolledwindow"""
-
         if event.get_state() & Gdk.ModifierType.CONTROL_MASK:
             zoom_delta = 0
             if event.direction == Gdk.ScrollDirection.SMOOTH:
@@ -899,7 +895,6 @@ class PdfShuffler:
 
     def get_file_path_from_dnd_dropped_uri(self, uri):
         """Extracts the path from an uri"""
-
         path = urllib.request.url2pathname(uri) # escape special chars
         path = path.strip('\r\n\x00')           # remove \r\n and NULL
 
@@ -929,14 +924,10 @@ class PdfShuffler:
         if rotate_times is not 0:
             for path in selection:
                 iter = model.get_iter(path)
-                nfile = model.get_value(iter, 2)
-                npage = model.get_value(iter, 3)
-
-                crop = [0.,0.,0.,0.]
-                perm = [0,2,1,3]
+                perm = [0, 2, 1, 3]
                 for it in range(rotate_times):
                     perm.append(perm.pop(0))
-                perm.insert(1,perm.pop(2))
+                perm.insert(1, perm.pop(2))
                 crop = [model.get_value(iter, 7 + perm[side]) for side in range(4)]
                 for side in range(4):
                     model.set_value(iter, 7 + side, crop[side])
@@ -964,7 +955,7 @@ class PdfShuffler:
         model = self.iconview.get_model()
         selection = self.iconview.get_selected_items()
 
-        crop = [0.,0.,0.,0.]
+        crop = [0., 0., 0., 0.]
         if selection:
             path = selection[0]
             pos = model.get_iter(path)
@@ -995,7 +986,7 @@ class PdfShuffler:
             label.set_alignment(0, 0.0)
             hbox.pack_start(label, True, True, 20)
 
-            adj = Gtk.Adjustment(100.*crop.pop(0), 0.0, 99.0, 1.0, 5.0, 0.0)
+            adj = Gtk.Adjustment(100. * crop.pop(0), 0.0, 99.0, 1.0, 5.0, 0.0)
             spin = Gtk.SpinButton(adjustment=adj, climb_rate=0, digits=1)
             spin.set_activates_default(True)
             spin.connect('value-changed', set_crop_value, side)
@@ -1011,7 +1002,7 @@ class PdfShuffler:
 
         if result == Gtk.ResponseType.OK:
             modified = False
-            crop = [spin.get_value()/100. for spin in spin_list]
+            crop = [spin.get_value() / 100. for spin in spin_list]
             for path in selection:
                 pos = model.get_iter(path)
                 for it in range(4):
@@ -1038,9 +1029,9 @@ class PdfShuffler:
         about_dialog.set_name(APPNAME)
         about_dialog.set_version(VERSION)
         about_dialog.set_comments(_(
-            '%s is a tool for rearranging and modifying PDF files. ' \
+            '%s is a tool for rearranging and modifying PDF files. '
             'Developed using GTK+ and Python') % APPNAME)
-        about_dialog.set_authors(['Konstantinos Poulios',])
+        about_dialog.set_authors(['Konstantinos Poulios'])
         about_dialog.set_website_label(WEBSITE)
         about_dialog.set_logo_icon_name('pdfshuffler')
         about_dialog.set_license(LICENSE)
@@ -1058,7 +1049,8 @@ class PdfShuffler:
         if response == Gtk.ResponseType.OK:
             error_msg_dlg.destroy()
 
-class PDF_Doc:
+
+class PDFDoc:
     """Class handling PDF documents"""
 
     def __init__(self, filename, nfile, tmp_dir):
@@ -1084,7 +1076,7 @@ class PDF_Doc:
             self.npage = 0
 
 
-class PDF_Renderer(threading.Thread,GObject.GObject):
+class PDFRenderer(threading.Thread, GObject.GObject):
 
     def __init__(self, model, pdfqueue, resample=1.):
         threading.Thread.__init__(self)
@@ -1103,17 +1095,17 @@ class PDF_Renderer(threading.Thread,GObject.GObject):
                     nfile = row[2]
                     npage = row[3]
                     pdfdoc = self.pdfqueue[nfile - 1]
-                    page = pdfdoc.document.get_page(npage-1)
+                    page = pdfdoc.document.get_page(npage - 1)
                     w, h = page.get_size()
                     thumbnail = cairo.ImageSurface(cairo.FORMAT_ARGB32,
-                                                   int(w/self.resample),
-                                                   int(h/self.resample))
+                                                   int(w / self.resample),
+                                                   int(h / self.resample))
                     cr = cairo.Context(thumbnail)
                     if self.resample != 1.:
-                        cr.scale(1./self.resample, 1./self.resample)
+                        cr.scale(1. / self.resample, 1. / self.resample)
                     page.render(cr)
                     time.sleep(0.003)
-                    GObject.idle_add(self.emit,'update_thumbnail',
+                    GObject.idle_add(self.emit, 'update_thumbnail',
                                      idx, thumbnail, self.resample,
                                      priority=GObject.PRIORITY_LOW)
                 except Exception as e:
